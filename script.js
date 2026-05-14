@@ -1,7 +1,7 @@
 let products=[], editId=null, xmlGenerated='';
 const COLORS=['#6366f1','#0ea5e9','#22c55e','#f59e0b','#ef4444','#ec4899','#14b8a6','#8b5cf6'];
 
-const FB='https://inventario-demo-default-rtdb.firebaseio.com';
+const FB='https://xml-en-la-nube-default-rtdb.firebaseio.com/';
 
 async function fbGet(){
   const r=await fetch(FB+'/productos.json');
@@ -24,14 +24,6 @@ async function loadProducts(){
   if(data && typeof data==='object'){
     products=Object.entries(data).map(([id,v])=>({...v,id}));
   }
-  if(!products.length) products=[
-    {id:'P001',name:'Laptop Dell XPS',cat:'Electrónica',price:4500000,qty:12,desc:'15", i7'},
-    {id:'P002',name:'Camiseta Polo',cat:'Ropa',price:85000,qty:45,desc:'Algodón 100%'},
-    {id:'P003',name:'Arroz Diana 5kg',cat:'Alimentos',price:22000,qty:200,desc:'Premium'},
-    {id:'P004',name:'Balón Fútbol',cat:'Deportes',price:150000,qty:30,desc:'Cuero sint.'},
-    {id:'P005',name:'Silla Ergonómica',cat:'Hogar',price:890000,qty:8,desc:'Ajustable'},
-    {id:'P006',name:'Audífonos Sony',cat:'Electrónica',price:320000,qty:25,desc:'Bluetooth'},
-  ];
   renderTable(); updateKPIs();
 }
 
@@ -41,6 +33,8 @@ const uid=()=>'P'+Date.now().toString(36).toUpperCase().slice(-5);
 async function saveProduct(){
   const name=v('f-name'),cat=v('f-cat'),price=parseFloat(v('f-price'))||0,qty=parseInt(v('f-qty'))||0,desc=v('f-desc');
   if(!name||!cat){toast('Nombre y categoría son obligatorios',true);return;}
+  if(price<0){toast('El precio no puede ser negativo',true);return;}
+  if(qty<0){toast('La cantidad no puede ser negativa',true);return;}
   const id=editId||uid();
   const prod={id,name,cat,price,qty,desc};
   await fbPut(id,prod);
@@ -134,6 +128,10 @@ function validarConDTD(xmlStr){
     else if(ids.has(id)) errors.push(`❌ Producto ${n}: id="${id}" duplicado (DTD tipo ID debe ser único)`);
     else ids.add(id);
     DTD.required.forEach(el=>{if(!p.querySelector(el)) errors.push(`❌ Producto ${n} (${id||'?'}): falta elemento obligatorio <${el}>`);});
+    const precio=Number(p.querySelector('precio')?.textContent);
+    const cantidad=Number(p.querySelector('cantidad')?.textContent);
+    if(Number.isFinite(precio)&&precio<0) errors.push(`❌ Producto ${n} (${id||'?'}): <precio> no puede ser negativo`);
+    if(Number.isFinite(cantidad)&&cantidad<0) errors.push(`❌ Producto ${n} (${id||'?'}): <cantidad> no puede ser negativa`);
     [...p.children].forEach(ch=>{
       if(![...DTD.required,...DTD.optional].includes(ch.tagName))
         warns.push(`⚠️ Producto ${n}: elemento <${ch.tagName}> no declarado en DTD`);
@@ -329,6 +327,14 @@ const CASOS_VALIDACION={
   <producto id="P001">
     <name>Laptop Dell</name>
     <precio>4500000</precio>
+  </producto>
+</inventario>`,
+  valoresNegativos:`<inventario total="1">
+  <producto id="P001">
+    <name>Laptop Dell</name>
+    <categoria>Electronica</categoria>
+    <precio>-4500000</precio>
+    <cantidad>-12</cantidad>
   </producto>
 </inventario>`
 };
