@@ -1,145 +1,256 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Gestión de Inventario — XML + Nube</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Antioqueñidad</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <link rel="stylesheet" href="style.css">
-<script src="script.js" defer></script>
 </head>
 <body>
 
-<nav>
-  <button class="nav-btn active" onclick="showPage('p1',this)">Punto 1 — CRUD</button>
-  <button class="nav-btn" onclick="showPage('p2',this);buildXML()"> Punto 2 — XML</button>
-  <button class="nav-btn" onclick="showPage('p3',this)">Aprendizaje Independiente</button>
-</nav>
-
-<div class="page active" id="p1">
-
-  <div class="kpi-row" id="kpis1">
-    <div class="kpi"><div class="kpi-n" id="k-total">0</div><div class="kpi-l">Productos</div></div>
-    <div class="kpi"><div class="kpi-n" id="k-stock">0</div><div class="kpi-l">En stock</div></div>
-    <div class="kpi"><div class="kpi-n" id="k-val">$0</div><div class="kpi-l">Valor total</div></div>
-    <div class="kpi"><div class="kpi-n" id="k-cats">0</div><div class="kpi-l">Categorías</div></div>
-  </div>
-
-  <div class="grid2">
-    <div class="card">
-      <h2>✏️ <span id="form-title">Nuevo Producto</span></h2>
-      <div id="editing-id" style="font-size:.71rem;color:var(--muted)">ID: (generado automáticamente)</div>
-      <label>Nombre *</label>
-      <input id="f-name" placeholder="Ej: Laptop Dell XPS 15"/>
-      <label>Categoría *</label>
-      <select id="f-cat">
-        <option value="">Seleccionar...</option>
-        <option>Electrónica</option><option>Ropa</option><option>Alimentos</option>
-        <option>Hogar</option><option>Deportes</option><option>Libros</option><option>Otro</option>
-      </select>
-      <label>Precio (COP $) *</label>
-      <input id="f-price" type="number" min="0" placeholder="0"/>
-      <label>Cantidad en stock *</label>
-      <input id="f-qty" type="number" min="0" placeholder="0"/>
-      <label>Descripción</label>
-      <input id="f-desc" placeholder="Descripción breve"/>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveProduct()">💾 Guardar</button>
-        <button class="btn btn-warn" onclick="clearForm()">🔄 Limpiar</button>
-        <button class="btn btn-gray" onclick="showPage('p2',document.querySelectorAll('.nav-btn')[1]);buildXML()">📊 Ver XML</button>
-      </div>
+<!-- ============================================================
+     PANTALLA LOGIN
+     ============================================================ -->
+<div id="screen-login">
+  <div class="login-box">
+    <div class="escudo">
+      <div class="escudo-img"></div>
+      <h1>Antioque�idad</h1>
+      <p>Sistema Gestion Antioque�idad C.E. San Nicolas</p>
     </div>
-
-    <div class="card">
-      <h2>📋 Productos registrados
-        <button class="btn btn-success" style="margin-left:auto;font-size:.71rem;padding:.25rem .65rem" onclick="loadProducts()">Cargar</button>
-      </h2>
-      <div style="overflow-x:auto">
-        <table>
-          <thead><tr><th>Producto</th><th>Categoria</th><th>Precio</th><th>Cantidad</th><th></th></tr></thead>
-          <tbody id="tbl-prod"><tr><td colspan="5" style="text-align:center;padding:1.1rem;color:var(--muted)">Cargando...</td></tr></tbody>
-        </table>
-      </div>
+    <div class="form-group">
+      <label>Usuario / Correo</label>
+      <input type="email" id="login-email" placeholder="usuario@cesannicolas.com" />
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Log de Peticiones en tiempo real</h2>
-    <div id="http-log"><em style="color:var(--muted)">Las peticiones HTTP aparecerán aquí...</em></div>
+    <div class="form-group">
+      <label>Contrase�a</label>
+      <input type="password" id="login-pass" placeholder="�����������"
+             onkeydown="if(event.key==='Enter') doLogin()"/>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()" id="btn-login">
+      Ingresar al Sistema
+    </button>
+    <div id="login-error" class="error-msg"></div>
+  
   </div>
 </div>
 
-<div class="page" id="p2">
+<!-- ============================================================
+     PANTALLA PRINCIPAL APP
+     ============================================================ -->
+<div id="screen-app" style="display:none;">
 
-  <div class="kpi-row" id="kpis2"></div>
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <span></span> Sistema Antioque�idad
+    </div>
+    <div class="topbar-user">
+      <span id="tb-nombre"></span>
+      <span class="role-badge" id="tb-role"></span>
+      <button class="btn btn-gris" style="padding:5px 12px; font-size:0.78rem;" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
 
-  <div class="grid2">
-    <div class="card">
-      <h2>Árbol XML
-        <div style="margin-left:auto;display:flex;gap:.35rem">
-          <button class="tab-btn active" id="tb-tree" onclick="xmlTab('tree')">Árbol</button>
-          <button class="tab-btn" id="tb-raw" onclick="xmlTab('raw')">Crudo</button>
-          <button class="tab-btn" id="tb-dtd" onclick="xmlTab('dtd')">DTD</button>
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <!-- se rellena dinamicamente -->
+    </nav>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+      <!-- ===== PAGINA: DASHBOARD ADMIN ===== -->
+      <div class="page" id="pg-dashboard">
+        <div class="page-title">Panel Principal</div>
+        <div class="stat-grid" id="stat-grid">
+          <div class="stat-card"><div class="stat-num" id="st-usuarios"></div><div class="stat-label">Usuarios</div></div>
+          <div class="stat-card"><div class="stat-num" id="st-ordenes"></div><div class="stat-label">Ordenes hoy</div></div>
+          <div class="stat-card"><div class="stat-num" id="st-ingresos"></div><div class="stat-label">Ingresos ($)</div></div>
         </div>
-      </h2>
-      <div id="xml-tree-view" class="xml-tree"></div>
-      <div id="xml-raw-view" style="display:none;font-family:monospace;font-size:.73rem;color:#86efac;white-space:pre;overflow:auto;max-height:350px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:.75rem"></div>
-      <div id="xml-dtd-view" style="display:none"></div>
 
-      <div id="dtd-result" style="margin-top:.8rem;display:none"></div>
-
-      <div class="btn-row">
-        <button class="btn btn-purple" onclick="revalidate()">Validar DTD</button>
+        <div class="card">
+          <h3>Ultimas Transacciones</h3>
+          <div id="dash-txs"><div class="spinner"></div></div>
+        </div>
       </div>
-    </div>
 
-    <div>
-      <div class="card">
-        <h2>Distribución por Cantidad</h2>
-        <div id="chart-qty"></div>
-      </div>
-      <div class="card">
-        <h2>Valor total por Categoría</h2>
-        <div id="chart-val"></div>
-      </div>
-    </div>
-  </div>
+      <!-- ===== PAGINA: GESTION DE USUARIOS (ADMIN) ===== -->
+      <div class="page" id="pg-usuarios">
+        <div class="page-title">Gestion de Usuarios</div>
 
-  <div class="card">
-    <div style="overflow-x:auto">
-      <table><thead><tr id="xml-tbl-head"></tr></thead><tbody id="xml-tbl-body"></tbody></table>
-    </div>
+        <div class="card">
+          <h3>Crear Nuevo Usuario</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombre Completo</label>
+              <input type="text" id="u-nombre" placeholder="Juan Perez" />
+            </div>
+            <div class="form-group">
+              <label>Correo Electronico</label>
+              <input type="email" id="u-email" placeholder="juan@cesannicolas.com" />
+            </div>
+            <div class="form-group">
+              <label>Contrase�a Inicial</label>
+              <input type="password" id="u-pass" placeholder="minimo 6 caracteres" />
+            </div>
+            <div class="form-group">
+              <label>Tipo de Usuario</label>
+              <select id="u-rol" onchange="toggleTipoVenta()">
+                <option value="">Seleccionar</option>
+                <option value="admin">Administrador</option>
+                <option value="banco">Banco (Cajero)</option>
+                <option value="venta">Vendedor</option>
+              </select>
+            </div>
+            <div class="form-group" id="fg-tipo-venta" style="display:none;">
+              <label>Tipo de Venta</label>
+              <select id="u-tipo-venta">
+                <option value="perros">Perros Calientes</option>
+                <option value="gaseosa">Gaseosas</option>
+                <option value="dulces">Dulces (Obleas / Solteritas)</option>
+                <option value="tintos">Tintos / Bebidas Calientes</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Telefono (opcional)</label>
+              <input type="text" id="u-tel" placeholder="300 000 0000" />
+            </div>
+          </div>
+          <button class="btn btn-verde" onclick="crearUsuario()">Crear Usuario</button>
+          <div id="u-msg" class="success-msg"></div>
+          <div id="u-err" class="error-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Lista de Usuarios</h3>
+          <div id="tabla-usuarios"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ===== PAGINA: BANCO / CAJERO ===== -->
+      <div class="page" id="pg-banco">
+        <div class="page-title">Modulo Banco Recepcion de Dinero</div>
+
+        <div class="card">
+          <h3> Registrar Ingreso en Efectivo</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Vendedor Destino</label>
+              <select id="b-vendedor">
+                <option value="">Seleccionar vendedor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Producto a Despachar</label>
+              <input type="text" id="b-producto" readonly style="background:#eee;" />
+            </div>
+            <div class="form-group">
+              <label>Cantidad Recibida ($)</label>
+              <input type="number" id="b-monto" placeholder="Ej: 15000" min="0" step="100" />
+            </div>
+            <div class="form-group">
+              <label>Unidades a Enviar</label>
+              <input type="number" id="b-unidades" placeholder="Ej: 3" min="1" />
+            </div>
+            <div class="form-group full">
+              <label>Observaciones</label>
+              <textarea id="b-obs" rows="2" placeholder="Notas adicionales..."></textarea>
+            </div>
+          </div>
+          <button class="btn btn-verde" onclick="registrarOrden()">📤 Enviar Orden al Vendedor</button>
+          <div id="b-msg" class="success-msg"></div>
+          <div id="b-err" class="error-msg"></div>
+        </div>
+
+        <div class="card">
+          <h3>Historial de Ordenes Enviadas Hoy</h3>
+          <div id="banco-historial"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ===== PAGINA: VENDEDOR ===== -->
+      <div class="page" id="pg-venta">
+        <div class="page-title" id="venta-titulo"> Mis Ordenes</div>
+        <div id="venta-ordenes"><div class="spinner"></div></div>
+      </div>
+
+      <!-- ===== PAGINA: PERFIL ===== -->
+      <div class="page" id="pg-perfil">
+        <div class="page-title">Mi Perfil</div>
+        <div class="card" style="max-width:440px;">
+          <h3>Datos de la Cuenta</h3>
+          <table>
+            <tr><td style="color:var(--gris);">Nombre</td><td id="pf-nombre"></td></tr>
+            <tr><td style="color:var(--gris);">Correo</td><td id="pf-email"></td></tr>
+            <tr><td style="color:var(--gris);">Rol</td><td id="pf-rol"></td></tr>
+            <tr><td style="color:var(--gris);">Tipo venta</td><td id="pf-tipo"></td></tr>
+          </table>
+          <div style="margin-top:1.2rem;">
+            <div class="form-group">
+              <label>Nueva Contrase�a</label>
+              <input type="password" id="new-pass" placeholder="Nueva contrase�a..." />
+            </div>
+            <button class="btn btn-oro" onclick="cambiarPass()">Actualizar Contrase�a</button>
+            <div id="pf-msg" class="success-msg"></div>
+            <div id="pf-err" class="error-msg"></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
   </div>
 </div>
 
-<div class="page" id="p3">
-
-  <div class="card">
-    <h2>Validador de XML</h2>
-    <div class="btn-row" style="margin-bottom:1rem">
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('malformado')">XML mal formado</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('raiz')">Raiz incorrecta</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('atributosRaiz')">Atributos raiz</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('hijoIncorrecto')">Hijo incorrecto</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('sinId')">Sin ID</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('idDuplicado')">ID duplicado</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('faltanElementos')">Faltan elementos</button>
-      <button class="btn btn-danger" onclick="cargarCasoValidacion('valoresNegativos')">Valores negativos</button>
+<!-- Modal editar usuario -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarModal()">✕</button>
+    <div class="modal-title">Editar Usuario</div>
+    <input type="hidden" id="edit-uid" />
+    <div class="form-group"><label>Nombre</label><input id="edit-nombre" /></div>
+    <div class="form-group"><label>Rol</label>
+      <select id="edit-rol" onchange="toggleEditTipoVenta()">
+        <option value="admin">Administrador</option>
+        <option value="banco">Banco</option>
+        <option value="venta">Vendedor</option>
+      </select>
     </div>
-    <div class="validator-grid">
-      <div>
-        <div class="validator-title ok">XML correcto</div>
-        <textarea id="dtd-xml-ok" rows="18" readonly></textarea>
-        <div id="manual-result-ok" style="margin-top:.75rem"></div>
-      </div>
-      <div>
-        <div class="validator-title bad">XML con error</div>
-        <textarea id="dtd-xml" rows="18"></textarea>
-        <div id="manual-result" style="margin-top:.75rem"></div>
-      </div>
+    <div class="form-group" id="edit-fg-tipo" style="display:none;"><label>Tipo Venta</label>
+      <select id="edit-tipo-venta">
+        <option value="perros">Perros Calientes</option>
+        <option value="gaseosa">Gaseosas</option>
+        <option value="dulces">Dulces</option>
+        <option value="tintos">Tintos</option>
+        <option value="general">General</option>
+      </select>
     </div>
+    <div class="form-group"><label>Telefono</label><input id="edit-tel" /></div>
+    <div class="form-group"><label>Estado</label>
+      <select id="edit-estado">
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:0.8rem; margin-top:0.5rem;">
+      <button class="btn btn-verde" onclick="guardarEdicion()">Guardar Cambios</button>
+      <button class="btn btn-gris" onclick="cerrarModal()">Cancelar</button>
+    </div>
+    <div id="edit-msg" class="success-msg"></div>
+    <div id="edit-err" class="error-msg"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script src="script.js"></script>
 </body>
 </html>
