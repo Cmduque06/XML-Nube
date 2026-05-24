@@ -1,0 +1,12 @@
+{
+  "hosting": {
+    "site": "ce-antioquenidad-e4e73",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
